@@ -1,18 +1,21 @@
 package modelo;
 
 import clientesPackage.Clientes;
+import clientesPackage.Clientes.Cliente;
 import clientesPackage.ObjectFactory;
 import clientesPackage.TipoDireccion;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
-import javax.json.JsonValue;
+import javax.json.JsonReader;
 import javax.json.JsonWriter;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
@@ -20,6 +23,7 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.stream.StreamSource;
+
 
 /**
  *
@@ -57,50 +61,54 @@ public class GestoraClientes {
         m.marshal(jaxbElement, ficheroXMLsalida);
     }
 
-    //Apartado 1: Crear un JSON con datos usuario. 
     /**
-     * 1: Crear un JSON con datos usuario. Crear dirección. Crea un
-     * JSONObjectBuilder . Se pasa como parámetro el objeto dirección.
-     *
-     * @param tipoDireccion
-     * @return
+     * metodo que crea un JsonObject de tipo direccion
+     * @param direccion
+     * @return JsonObject
      */
-    public JsonObject crearDireccion(TipoDireccion tipoDireccion) {
-        JsonObject direccion = Json.createObjectBuilder()
-                .add("calle", tipoDireccion.getCalle())
-                .add("numero", tipoDireccion.getNumero())
-                .add("piso", tipoDireccion.getPiso())
-                .add("escalera", tipoDireccion.getEscalera())
-                .add("cp", tipoDireccion.getCp())
-                .add("ciudad", tipoDireccion.getCiudad())
+    public JsonObject crearDireccion(TipoDireccion direccion) {
+        JsonObject jSonDireccion = Json.createObjectBuilder()
+                .add("calle", direccion.getCalle())
+                .add("numero", direccion.getNumero())
+                .add("piso", direccion.getPiso())
+                .add("escalera", direccion.getEscalera())
+                .add("cp", direccion.getCp())
+                .add("ciudad", direccion.getCiudad())
                 .build();
 
-        return direccion;
+        return jSonDireccion;
 
+    }
+
+    /**
+     * metodo que devuelve un JsonArray con los apellidos
+     *
+     * @param apellidos
+     * @return
+     */
+    private JsonArray crearApellidos(List<String> apellidos) {
+        JsonArray jsonArrayApellidos = Json.createArrayBuilder()
+                .add(apellidos.get(0) + " " + apellidos.get(1))
+                .build();
+        return jsonArrayApellidos;
     }
 
     /**
      * 2-Crear cliente.Crea un JSONObjectBuilder.Pasar una lista de direcciones
      * y el resto de los datos del cliente.
      *
-     * @param nombre
-     * @param apellido1
-     * @param apellido2
-     * @param telefono
-     * @param direcciones
-     * @return
+     * @param cliente
+     * @return JsonObject 
      */
-    public JsonObject crearCliente(String nombre, String apellido1, String apellido2, String telefono, List<JsonObject> direcciones) {
-        JsonObject cliente = Json.createObjectBuilder()
-                .add("apellido", Json.createArrayBuilder() //creamos array de apellidos
-                        .add(apellido1)
-                        .add(apellido2))
-                .add("direccion", crearJsonArrayDirecciones(direcciones))
-                .add("nombre", nombre)
-                .add("telefono", telefono)
+    public JsonObject crearCliente(Cliente cliente) {
+        JsonObject jsonCliente = Json.createObjectBuilder()
+                .add("apellido", crearApellidos(cliente.getApellido()))
+                .add("direccion", JsonArrayDirecciones(cliente.getDireccion()))
+                .add("nombre", cliente.getNombre())
+                .add("telefono", cliente.getTelefono())
                 .build();
 
-        return cliente;
+        return jsonCliente;
 
     }
 
@@ -111,16 +119,13 @@ public class GestoraClientes {
      * @param direcciones
      * @return
      */
-    private JsonArray crearJsonArrayDirecciones(List<JsonObject> direcciones) {
-        JsonArrayBuilder fabrica = Json.createArrayBuilder();                       //creamos con la fabrica el array
-        JsonArray arrayDirecciones = null;                                          //JsonArray para las direcciones
+    private JsonArray JsonArrayDirecciones(List<TipoDireccion> direcciones) {
+        JsonArrayBuilder jsonArrayDirecciones = Json.createArrayBuilder();                       //creamos con la fabrica el array
 
-        for (JsonValue direccion : arrayDirecciones) {
-            fabrica.add(direccion);
+        for (TipoDireccion direccion : direcciones) {
+            jsonArrayDirecciones.add(crearDireccion(direccion));                //añadimos las direcciones correspondientes
         }
-
-        arrayDirecciones = fabrica.build();                                           //build() del arrayDirecciones
-        return arrayDirecciones;
+        return jsonArrayDirecciones.build();
 
     }
 
@@ -128,39 +133,111 @@ public class GestoraClientes {
      * 3-Crear clientes.Creando un JsonArrayBuilder.Pasar una lista de clientes
      *
      * @param clientes
-     * @return
+     * @return JsonArray de clientes
      */
-    public JsonArray crearClientes(List<JsonObject> clientes) {
-        JsonArrayBuilder fabrica = Json.createArrayBuilder();                   //creamos fabrica. JsonArrayBuilder
-        JsonArray arrayClientes = null;                                         //creamos el arrayClientes
-
-        for (JsonValue cliente : arrayClientes) {                               //recorremos y añadimos
-            fabrica.add(cliente);
+    public JsonArray crearClientes(List<Cliente> clientes) {
+        JsonArrayBuilder jsonArrayClientes = Json.createArrayBuilder();                   //creamos fabrica. JsonArrayBuilder
+        for (Cliente cliente : clientes) {
+            jsonArrayClientes.add(crearCliente(cliente));
 
         }
-        arrayClientes = fabrica.build();                                        //pegamos
-        return arrayClientes;                                                   //retornamos clientes
+        return jsonArrayClientes.build();                                                   //retornamos clientes
 
     }
-    
-    //APARTADO 2. CREAR UN JSON CON DATOS XML. que hemos obtenido con los metodos anteriores
+
+    /**
+     * Método que devuelve un JsonObject de tipo Cliente
+     * @param clientes lista de tipo Clientes.Cliente
+     * @return JsonObject
+     */
+    private JsonObject jsonObjectCliente(List<Cliente> clientes) {
+        JsonObject jsonObjectCliente = Json.createObjectBuilder()
+                .add("cliente", crearClientes(clientes))
+                .build();
+        return jsonObjectCliente;
+    }
+
+    /**
+     * Método que devuelve un JsonObject de tipo Clientes (Para que nos de el
+     * json con todos los elementos root e hijos)
+     *
+     * @param clientes lista de tipo clientes
+     * @return JsonObject Clientes
+     */
+    public JsonObject jsonObjectClientes(List<Cliente> clientes) {
+        JsonObject jsonObjectClientes = Json.createObjectBuilder()
+                .add("clientes", jsonObjectCliente(clientes))
+                .build();
+        return jsonObjectClientes;
+    }
+
     
     /**
      * metodo para crear y actualizar un archivo Json, parametrizado
-     * @param object
+     *
+     * @param jsonObject
      * @param nombreArchivoSalida
-     * @return 
+     * @return
+     * @throws java.io.IOException
      */
-    public boolean crearArchivoJason(JsonObject object,String nombreArchivoSalida) throws IOException{
-        boolean creadoActualizado=false;
+    public boolean escribirArchivoJson(JsonObject jsonObject, String nombreArchivoSalida) throws IOException {
+        boolean creadoActualizado = false;
         FileWriter ficheroSalida = new FileWriter(nombreArchivoSalida);
-        JsonWriter createWriter = Json.createWriter(ficheroSalida);
-        createWriter.writeArray((JsonArray) object);                                     //escribimos el array completo
-        ficheroSalida.flush();                                                           //hace CAST JsonArray
+        JsonWriter jsonWriter = Json.createWriter(ficheroSalida);
+        jsonWriter.writeObject(jsonObject);                                     //escribimos el objeto completo
+        ficheroSalida.flush();
         ficheroSalida.close();
 
         creadoActualizado = true;
         return creadoActualizado;
     }
 
+    
+    /**
+     * lee un archivo json que recibe y devuelve un JsonArray
+     *
+     * @param nombreArchivo
+     * @return JsonObject 
+     * @throws FileNotFoundException
+     */
+    public JsonObject leerArchivoJson(String nombreArchivo) throws FileNotFoundException {
+        FileReader fr = new FileReader(nombreArchivo);
+        JsonReader jr = Json.createReader(fr);
+        JsonObject readObject = jr.readObject();
+        return readObject;
+
+    }
+    
+    public void generalXML(String archivoJson,String salidaArchivoXML) throws FileNotFoundException{
+    Clientes clientes = fabrica.createClientes();                   //creamos fabrica
+    FileReader entrada = new FileReader(archivoJson);               //archivo json para leerlo
+    JsonReader jsonReader = Json.createReader(entrada);
+    JsonArray json = jsonReader.readArray();                   // objeto reader , para leer el array
+    for (int i = 0; i < json.size(); i++) {                    //recorremos el array
+    List<String> listaApellidos=new ArrayList<>();
+    JsonArray jsonArrayApellidos = json.getJsonObject(i).getJsonArray("apellido");
+    for(int j=0;j <listaApellidos.size();j++){
+    listaApellidos.add(jsonArrayApellidos.getJsonObject(j).toString());
+    }
+    
+    List<TipoDireccion> listaDirecciones=new ArrayList<>();
+    JsonArray jsonArrayDirecciones = json.getJsonObject(i).getJsonArray("direcciones");
+    for(int k=0;k<listaDirecciones.size();k++){
+    listaDirecciones.add((TipoDireccion) jsonArrayDirecciones.getJsonObject(k));
+    }
+    String nombre=json.getString(i, "nombre");
+    String telefono=json.getString(i, "telefono");
+    
+    //creamos el cliente 
+    Cliente cliente=new Cliente();
+    cliente.setNombre(nombre);
+    cliente.setTelefono(telefono);
+    clientes.getCliente().add(cliente);
+    }
+    
+    
+    
+    }
+    
+    
 }
